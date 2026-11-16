@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 1s
+  external_labels:
+    monitor: 'devopsage-monitor'
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: "orderer"
+    static_configs:
+      - targets: ["orderer.clearchain.com:9443"]
+  - job_name: "peer0_switch"
+    static_configs:
+      - targets: ["peer0.switch.clearchain.com:9444"]
+  - job_name: "peer0_npci"
+    static_configs:
+      - targets: ["peer0.npci.clearchain.com:9445"]
+  - job_name: cadvisor
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['cadvisor:8080']
+  - job_name: node
+    static_configs:
+      - targets: ['node-exporter:9100']

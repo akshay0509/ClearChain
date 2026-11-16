@@ -1,0 +1,182 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+networks:
+  test:
+    name: drunix_test
+
+services:
+
+  ca_switch:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-switch
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
+    ports:
+      - "7054:7054"
+      - "17054:17054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/switch:/etc/hyperledger/fabric-ca-server
+    container_name: ca_switch
+    networks:
+      - test
+  ca_NPCI:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-NPCI
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7154
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17154
+    ports:
+      - "7154:7154"
+      - "17154:17154"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/NPCI:/etc/hyperledger/fabric-ca-server
+    container_name: ca_NPCI
+    networks:
+      - test
+  ca_banka:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-banka
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7254
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17254
+    ports:
+      - "7254:7254"
+      - "17254:17254"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/banka:/etc/hyperledger/fabric-ca-server
+    container_name: ca_banka
+    networks:
+      - test
+  ca_bankb:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-bankb
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7354
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17354
+    ports:
+      - "7354:7354"
+      - "17354:17354"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/bankb:/etc/hyperledger/fabric-ca-server
+    container_name: ca_bankb
+    networks:
+      - test
+  ca_aggregator:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-aggregator
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7454
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17454
+    ports:
+      - "7454:7454"
+      - "17454:17454"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/aggregator:/etc/hyperledger/fabric-ca-server
+    container_name: ca_aggregator
+    networks:
+      - test
+  ca_sponsorbank:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-sponsorbank
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7554
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17554
+    ports:
+      - "7554:7554"
+      - "17554:17554"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/sponsorbank:/etc/hyperledger/fabric-ca-server
+    container_name: ca_sponsorbank
+    networks:
+      - test
+  ca_buyer:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-buyer
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7654
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17654
+    ports:
+      - "7654:7654"
+      - "17654:17654"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/buyer:/etc/hyperledger/fabric-ca-server
+    container_name: ca_buyer
+    networks:
+      - test
+  ca_investigator:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-investigator
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7754
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17754
+    ports:
+      - "7754:7754"
+      - "17754:17754"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/investigator:/etc/hyperledger/fabric-ca-server
+    container_name: ca_investigator
+    networks:
+      - test
+  ca_orderer:
+    image: hyperledger/fabric-ca:latest
+    labels:
+      service: drunix
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=9054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
+    ports:
+      - "9054:9054"
+      - "19054:19054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/ordererOrg:/etc/hyperledger/fabric-ca-server
+    container_name: ca_orderer
+    networks:
+      - test

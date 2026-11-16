@@ -1,0 +1,115 @@
+networks:
+  test:
+    name: drunix_test
+services:
+  yugabyte.clearchain.com:
+    container_name: yugabyte.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    ports:
+      - "5433:5433"
+    networks:
+      - test
+
+  hlf_keydb_SwitchOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_SwitchOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6479:6379"
+    networks:
+      - test
+   
+  hlf_keydb_NPCIOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_NPCIOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6389:6379"
+    networks:
+      - test
+
+
+  hlf_keydb_BankAOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_BankAOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6399:6379"
+    networks:
+      - test
+
+  hlf_keydb_BankBOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_BankBOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6409:6379"
+    networks:
+      - test
+
+  hlf_keydb_AggregatorOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_AggregatorOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6419:6379"
+    networks:
+      - test
+
+  hlf_keydb_SponsorBankOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_SponsorBankOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6429:6379"
+    networks:
+      - test
+
+  hlf_keydb_BuyerOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_BuyerOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6439:6379"
+    networks:
+      - test
+
+  hlf_keydb_InvestigatorOrgMSP:
+    image: eqalpha/keydb
+    container_name: hlf_keydb_InvestigatorOrgMSP
+    command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - "6449:6379"
+    networks:
+      - test

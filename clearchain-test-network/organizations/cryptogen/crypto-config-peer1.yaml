@@ -1,0 +1,114 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+
+# ---------------------------------------------------------------------------
+# "PeerOrgs" - Definition of organizations managing peer nodes
+# ---------------------------------------------------------------------------
+PeerOrgs:
+  # ---------------------------------------------------------------------------
+  # Switch
+  # ---------------------------------------------------------------------------
+  - Name: Switch
+    Domain: switch.clearchain.com
+    EnableNodeOUs: true
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # SponsorBank
+  # ---------------------------------------------------------------------------
+  - Name: SponsorBank
+    Domain: sponsorbank.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # NPCI
+  # ---------------------------------------------------------------------------
+  - Name: NPCI
+    Domain: npci.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # BankA
+  # ---------------------------------------------------------------------------
+  - Name: BankA
+    Domain: banka.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # BankB
+  # ---------------------------------------------------------------------------
+  - Name: BankB
+    Domain: bankb.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # Buyer
+  # ---------------------------------------------------------------------------
+  - Name: Buyer
+    Domain: buyer.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # Aggregator
+  # ---------------------------------------------------------------------------
+  - Name: Aggregator
+    Domain: aggregator.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  # ---------------------------------------------------------------------------
+  # Investigator
+  # ---------------------------------------------------------------------------
+  - Name: Investigator
+    Domain: investigator.clearchain.com
+    EnableNodeOUs: true
+    
+    Template:
+      Count: 4
+      SANS:
+        - localhost
+    Users:
+      Count: 1
+  
