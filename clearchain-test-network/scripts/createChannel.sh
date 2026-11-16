@@ -85,7 +85,7 @@ joinChannel() {
 		COUNTER=$(expr $COUNTER + 1)
 	done
 	cat log.txt
-	verifyResult $res "After $MAX_RETRY attempts, peer0.org${ORG} has failed to join channel '$CHANNEL_NAME' "
+	verifyResult $res "After $MAX_RETRY attempts, peer${PEER}.${ORG_NAMES[$ORG]} has failed to join channel '$CHANNEL_NAME' "
 }
 
 setAnchorPeer() {
@@ -111,21 +111,18 @@ infoln "Creating channel ${CHANNEL_NAME}"
 createChannel $BFT
 successln "Channel '$CHANNEL_NAME' created"
 
-## Join all the peers to the channel
-infoln "Joining switch CP to the channel..."
-joinChannel 1 1	
-infoln "Joining switch LP to the channel..."
-joinChannel 1 0 
-infoln "Joining npci CP to the channel..."
+## Join every org's committing peer (peer1) and lite peer (peer0) to the channel
+for org in $ALL_ORGS; do
+  infoln "Joining ${ORG_NAMES[$org]} CP to the channel..."
+  joinChannel $org 1
+  infoln "Joining ${ORG_NAMES[$org]} LP to the channel..."
+  joinChannel $org 0
+done
 
-joinChannel 2 1 
-infoln "Joining switch CP to the channel..."
-joinChannel 2 0 
-
-# ## Set the anchor peers for each org in the channel
-infoln "Setting anchor peer for switch.."
-setAnchorPeer 1 1
-infoln "Setting anchor peer for npci.."
-setAnchorPeer 2 1
+## Set the anchor peer (the committing peer) for each org in the channel
+for org in $ALL_ORGS; do
+  infoln "Setting anchor peer for ${ORG_NAMES[$org]}.."
+  setAnchorPeer $org 1
+done
 
 successln "Channel '$CHANNEL_NAME' joined"

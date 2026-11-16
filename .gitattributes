@@ -1,0 +1,8 @@
+# Shell scripts and configs must keep LF endings; they run on Linux.
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.config text eol=lf
+*.py text eol=lf
+*.db binary

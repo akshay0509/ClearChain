@@ -59,7 +59,7 @@
 #       - CORE_PEER_KVSTORE_REPLICAADDRESS=hlf_keydb_{small}orgmsp:6379
 #       #StateDatabase
 #       - CORE_LEDGER_STATE_STATEDATABASE=sqldb
-#       - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.clearchain.com
+#       - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.{small}.clearchain.com
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_PORT=5433
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_DBNAME=yugabyte
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_USER=yugabyte
@@ -143,7 +143,7 @@
 #       - CORE_PEER_KVSTORE_REPLICAADDRESS=hlf_keydb_{small}orgmsp:6379
 #       #StateDatabase
 #       - CORE_LEDGER_STATE_STATEDATABASE=sqldb
-#       - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.clearchain.com
+#       - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.{small}.clearchain.com
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_PORT=5433
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_DBNAME=yugabyte
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_USER=yugabyte
@@ -204,7 +204,7 @@
 #       - CORE_PEER_KVSTORE_REPLICAADDRESS=hlf_keydb_{small}orgmsp:6379
 #       #StateDatabase
 #       - CORE_LEDGER_STATE_STATEDATABASE=sqldb
-#       - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.clearchain.com
+#       - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.{small}.clearchain.com
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_PORT=5433
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_DBNAME=yugabyte
 #       - CORE_LEDGER_STATE_SQLDBCONFIG_USER=yugabyte
@@ -303,7 +303,7 @@ lp_template="""
       - CORE_PEER_KVSTORE_REPLICAADDRESS=hlf_keydb_{small}orgmsp:6379
       #StateDatabase
       - CORE_LEDGER_STATE_STATEDATABASE=sqldb
-      - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.clearchain.com
+      - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.{small}.clearchain.com
       - CORE_LEDGER_STATE_SQLDBCONFIG_PORT=5433
       - CORE_LEDGER_STATE_SQLDBCONFIG_DBNAME=yugabyte
       - CORE_LEDGER_STATE_SQLDBCONFIG_USER=yugabyte
@@ -387,7 +387,7 @@ cp_template="""
       - CORE_PEER_KVSTORE_REPLICAADDRESS=hlf_keydb_{small}orgmsp:6379
       #StateDatabase
       - CORE_LEDGER_STATE_STATEDATABASE=sqldb
-      - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.clearchain.com
+      - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.{small}.clearchain.com
       - CORE_LEDGER_STATE_SQLDBCONFIG_PORT=5433
       - CORE_LEDGER_STATE_SQLDBCONFIG_DBNAME=yugabyte
       - CORE_LEDGER_STATE_SQLDBCONFIG_USER=yugabyte
@@ -448,7 +448,7 @@ vs_template="""
       - CORE_PEER_KVSTORE_REPLICAADDRESS=hlf_keydb_{small}orgmsp:6379
       #StateDatabase
       - CORE_LEDGER_STATE_STATEDATABASE=sqldb
-      - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.clearchain.com
+      - CORE_LEDGER_STATE_SQLDBCONFIG_ADDRESS=yugabyte.{small}.clearchain.com
       - CORE_LEDGER_STATE_SQLDBCONFIG_PORT=5433
       - CORE_LEDGER_STATE_SQLDBCONFIG_DBNAME=yugabyte
       - CORE_LEDGER_STATE_SQLDBCONFIG_USER=yugabyte

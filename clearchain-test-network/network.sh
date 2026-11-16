@@ -450,12 +450,22 @@ function networkUp() {
   if [ "${DATABASE}" == "yugabyte" ]; then
   
     docker-compose -f scripts/yugabyte/compose.yaml up -d
-    # # if ! ${CONTAINER_CLI} ps --filter "name=yb-tserver1-n1" --filter "status=running" --format '{{.Names}}' | grep -q '^yugabyte$'; then
-    #   fatalln "Yugabyte container is not running. Please check logs."
-    # else
-    #   echo "Yugabyte container is up and running."
-    # fi
-    sleep 30
+
+    # Every org has its own database; wait until each one accepts SQL connections.
+    infoln "Waiting for the state databases to accept connections"
+    local yb_containers
+    yb_containers=$(${CONTAINER_CLI} ps --filter "name=^yugabyte\." --format '{{.Names}}')
+    for yb in $yb_containers; do
+      local tries=0
+      until ${CONTAINER_CLI} exec "$yb" bash -c 'bin/ysqlsh -h "$(hostname)" -U yugabyte -tAc "select 1"' > /dev/null 2>&1; do
+        tries=$((tries + 1))
+        if [ $tries -ge 90 ]; then
+          fatalln "State database $yb did not become ready"
+        fi
+        sleep 2
+      done
+      infoln "$yb is ready"
+    done
   fi
 
 

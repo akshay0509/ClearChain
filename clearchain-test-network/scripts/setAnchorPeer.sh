@@ -22,17 +22,13 @@ createAnchorPeerUpdate() {
 
   infoln "Generating anchor peer update transaction for Org${ORG} on channel $CHANNEL_NAME"
 
-  if [ $ORG -eq 1 ] &&[ $PEER -eq 1 ]; then
-    HOST="peer1.switch.clearchain.com"
-    PORT=7061
-  elif [ $ORG -eq 2 ] && [ $PEER -eq  1 ]; then
-    HOST="peer1.npci.clearchain.com"
-    PORT=9061
-  # elif [ $ORG -eq 3 ]; then
-  #   HOST="peer0.org3.clearchain.com"
-  #   PORT=11051
+  # The anchor peer is the org's committing peer (peer1); inside the docker
+  # network it listens on the same port that is published on the host.
+  if [[ "$ORG" =~ ^[1-8]$ ]] && [[ "$PEER" =~ ^[01]$ ]]; then
+    HOST="peer${PEER}.$(orgDomain $ORG)"
+    PORT=$(orgPeerPort $ORG $PEER)
   else
-    errorln "Org${ORG} unknown"
+    fatalln "Org${ORG} peer${PEER} unknown"
   fi
 
   set -x

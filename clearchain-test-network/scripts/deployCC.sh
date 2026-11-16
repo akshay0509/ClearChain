@@ -73,48 +73,44 @@ checkPrereqs
 
 PACKAGE_ID=$(peer lifecycle chaincode calculatepackageid ${CC_NAME}.tar.gz)
 
-## Install chaincode on peer0.switch and peer0.npci
-infoln "Installing chaincode on peer0.switch.."
-installChaincode 1 0
-infoln "Install chaincode on peer0.npci.."
-installChaincode 2 0
+## Install the chaincode on every org's lite peer (peer0), which is where it runs
+for org in $ALL_ORGS; do
+  infoln "Installing chaincode on peer0.${ORG_NAMES[$org]}.."
+  installChaincode $org 0
+done
 
 resolveSequence
 
 ## query whether the chaincode is installed
 queryInstalled 1 0
 
-## approve the definition for switch
-approveForMyOrg 1 1
+## approve the definition for every org through its committing peer (peer1).
+## The channel's LifecycleEndorsement policy needs a majority of the orgs.
+for org in $ALL_ORGS; do
+  approveForMyOrg $org 1
+done
 
-## check whether the chaincode definition is ready to be committed
-## expect switch to have approved and npci not to
-checkCommitReadiness 1 1 "\"SwitchOrgMSP\": true" "\"NPCIOrgMSP\": false"
-checkCommitReadiness 2 1 "\"SwitchOrgMSP\": true" "\"NPCIOrgMSP\": false"
+## check that every org's approval is visible before committing
+APPROVALS=()
+for org in $ALL_ORGS; do
+  APPROVALS+=("\"${ORG_MSPS[$org]}\": true")
+done
+checkCommitReadiness 1 1 "${APPROVALS[@]}"
 
-## now approve also for npci
-approveForMyOrg 2 1
+## now that we know all orgs have approved, commit the definition
+commitChaincodeDefinition $ALL_ORGS
 
-## check whether the chaincode definition is ready to be committed
-## expect them both to have approved
-checkCommitReadiness 1 1 "\"SwitchOrgMSP\": true" "\"NPCIOrgMSP\": true"
-checkCommitReadiness 2 1 "\"SwitchOrgMSP\": true" "\"NPCIOrgMSP\": true"
-
-## now that we know for sure both orgs have approved, commit the definition
-commitChaincodeDefinition 1 2
-# commitChaincodeDefinition 2 1
-
-
-## query on both orgs to see that the definition committed successfully
-queryCommitted 1 0
-queryCommitted 2 0
+## query on every org to see that the definition committed successfully
+for org in $ALL_ORGS; do
+  queryCommitted $org 0
+done
 
 ## Invoke the chaincode - this does require that the chaincode have the 'initLedger'
 ## method defined
 if [ "$CC_INIT_FCN" = "NA" ]; then
   infoln "Chaincode initialization is not required"
 else
-  chaincodeInvokeInit 1 2
+  CONN_PEER=0 chaincodeInvokeInit $ALL_ORGS
 fi
 
 exit 0

@@ -1,11 +1,17 @@
+# One YugabyteDB (state database) and one KeyDB (transient store) per org.
+# Drunix creates a table per chaincode in the state database, so two orgs must
+# never share one: their committing peers would collide creating the same table.
+# YugabyteDB SQL is published on host ports 5433 (switch) to 5440 (investigator).
 networks:
   test:
     name: drunix_test
 services:
-  yugabyte.clearchain.com:
-    container_name: yugabyte.clearchain.com
+  yugabyte.switch.clearchain.com:
+    container_name: yugabyte.switch.clearchain.com
     image: yugabytedb/yugabyte:2025.2.0.0-b131
     command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
     ports:
       - "5433:5433"
     networks:
@@ -23,11 +29,24 @@ services:
       - "6479:6379"
     networks:
       - test
-   
+
+  yugabyte.npci.clearchain.com:
+    container_name: yugabyte.npci.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5434:5433"
+    networks:
+      - test
+
   hlf_keydb_NPCIOrgMSP:
     image: eqalpha/keydb
     container_name: hlf_keydb_NPCIOrgMSP
     command: ["keydb-server", "/etc/keydb/keydb.conf"]
+    labels:
+      service: drunix
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
@@ -35,6 +54,16 @@ services:
     networks:
       - test
 
+  yugabyte.banka.clearchain.com:
+    container_name: yugabyte.banka.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5435:5433"
+    networks:
+      - test
 
   hlf_keydb_BankAOrgMSP:
     image: eqalpha/keydb
@@ -46,6 +75,17 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - "6399:6379"
+    networks:
+      - test
+
+  yugabyte.bankb.clearchain.com:
+    container_name: yugabyte.bankb.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5436:5433"
     networks:
       - test
 
@@ -62,6 +102,17 @@ services:
     networks:
       - test
 
+  yugabyte.aggregator.clearchain.com:
+    container_name: yugabyte.aggregator.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5437:5433"
+    networks:
+      - test
+
   hlf_keydb_AggregatorOrgMSP:
     image: eqalpha/keydb
     container_name: hlf_keydb_AggregatorOrgMSP
@@ -72,6 +123,17 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - "6419:6379"
+    networks:
+      - test
+
+  yugabyte.sponsorbank.clearchain.com:
+    container_name: yugabyte.sponsorbank.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5438:5433"
     networks:
       - test
 
@@ -88,6 +150,17 @@ services:
     networks:
       - test
 
+  yugabyte.buyer.clearchain.com:
+    container_name: yugabyte.buyer.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5439:5433"
+    networks:
+      - test
+
   hlf_keydb_BuyerOrgMSP:
     image: eqalpha/keydb
     container_name: hlf_keydb_BuyerOrgMSP
@@ -98,6 +171,17 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
       - "6439:6379"
+    networks:
+      - test
+
+  yugabyte.investigator.clearchain.com:
+    container_name: yugabyte.investigator.clearchain.com
+    image: yugabytedb/yugabyte:2025.2.0.0-b131
+    command: ["bin/yugabyted", "start", "--background=false"]
+    labels:
+      service: drunix
+    ports:
+      - "5440:5433"
     networks:
       - test
 

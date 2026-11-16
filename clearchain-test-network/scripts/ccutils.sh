@@ -41,6 +41,11 @@ function approveForMyOrg() {
   res=$?
   { set +x; } 2>/dev/null
   cat log.txt
+  # A rerun after a deploy that stopped part-way finds this org's approval already recorded.
+  if [ $res -ne 0 ] && grep -q "unchanged content" log.txt; then
+    infoln "Definition already approved by org${ORG} for this sequence, continuing"
+    res=0
+  fi
   verifyResult $res "Chaincode definition approved on peer0.org${ORG} on channel '$CHANNEL_NAME' failed"
   successln "Chaincode definition approved on peer0.org${ORG} on channel '$CHANNEL_NAME'"
 }
@@ -49,7 +54,7 @@ function approveForMyOrg() {
 function checkCommitReadiness() {
   ORG=$1
   PEER=$2
-  shift 1
+  shift 2
   setGlobals $ORG $PEER
   infoln "Checking the commit readiness of the chaincode definition on peer0.org${ORG} on channel '$CHANNEL_NAME'..."
   local rc=1
@@ -298,7 +303,12 @@ chaincodeInvoke() {
   CHANNEL=$2
   CC_NAME=$3
   CC_INVOKE_CONSTRUCTOR=$4
-  
+
+  # Send the proposal to the lite peers of ENDORSING_ORGS (default: all orgs,
+  # which satisfies any endorsement policy), then submit as the invoking org.
+  CONN_PEER=0 parsePeerConnectionParameters ${ENDORSING_ORGS:-$ALL_ORGS}
+  setGlobals $ORG 0
+
   infoln "Invoking on peer0.org${ORG} on channel '$CHANNEL_NAME'..."
   local rc=1
   local COUNTER=1
@@ -308,7 +318,7 @@ chaincodeInvoke() {
     sleep $DELAY
     infoln "Attempting to Invoke on peer0.org${ORG}, Retry after $DELAY seconds."
     set -x
-    peer chaincode invoke -o localhost:7050 -C $CHANNEL_NAME -n ${CC_NAME} -c ${CC_INVOKE_CONSTRUCTOR} --tls --cafile $ORDERER_CA  --peerAddresses localhost:7051 --tlsRootCertFiles $PEER0_SWITCH_CA --peerAddresses localhost:9051 --tlsRootCertFiles $PEER0_NPCI_CA  >&log.txt
+    peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.clearchain.com -C $CHANNEL_NAME -n ${CC_NAME} -c ${CC_INVOKE_CONSTRUCTOR} --tls --cafile $ORDERER_CA "${PEER_CONN_PARMS[@]}" >&log.txt
     res=$?
     { set +x; } 2>/dev/null
     let rc=$res

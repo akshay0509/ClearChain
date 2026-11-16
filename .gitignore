@@ -1,0 +1,5 @@
+# Build output and run logs
+services/bin/
+services/logs/
+# Vendored chaincode dependencies are created at deploy time
+chaincode/*/vendor/
