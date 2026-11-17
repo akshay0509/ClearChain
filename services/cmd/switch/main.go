@@ -14,6 +14,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -23,6 +25,7 @@ import (
 	"os"
 	"os/signal"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,6 +42,9 @@ const (
 	outPayer    = "PAYER_FAILED"    // payer bank did not debit
 	outReversed = "FAILED_REVERSED" // debited, credit refused, debit reversed
 	outPending  = "PENDING"         // debited, credit unconfirmed: the stuck state
+	outDup      = "DUPLICATE"       // this RRN was already handled by this switch
+
+	settlementChaincode = "settlement"
 )
 
 type payRequest struct {
@@ -46,6 +52,18 @@ type payRequest struct {
 	PayerBank string `json:"payerBank"`
 	PayeeBank string `json:"payeeBank"`
 	Amount    int64  `json:"amount"` // paise
+	// MerchantID is set for a payment to a merchant collected through a payment
+	// aggregator; the payee bank is then the aggregator's escrow bank.
+	MerchantID string `json:"merchantId"`
+	PayerVPA   string `json:"payerVpa"`
+	PayeeVPA   string `json:"payeeVpa"`
+}
+
+// settlementRecord is one payment waiting to be written to the ledger.
+type settlementRecord struct {
+	req       payRequest
+	debitedAt int64
+	attempts  int
 }
 
 type payResult struct {
@@ -81,6 +99,16 @@ type paySwitch struct {
 	contract func(fn string, args ...string) error
 
 	probeSeq sync.Map // bank -> *atomic.Uint64
+	seen     sync.Map // RRNs this switch has already accepted
+
+	// Settlement records are written to the ledger off the payment path. If the
+	// ledger is slow they wait here; payments are not held up.
+	records   chan settlementRecord
+	recordFn  func(fn string, args ...string) error
+	recQueued atomic.Int64
+	recDone   atomic.Int64
+	recDup    atomic.Int64
+	recFailed atomic.Int64
 
 	mu        sync.Mutex
 	outcomes  map[string]int
@@ -117,6 +145,10 @@ func (s *paySwitch) admit(bank string) (ok bool, reason string, e flagcache.Entr
 
 func (s *paySwitch) pay(ctx context.Context, req payRequest) payResult {
 	start := time.Now()
+	if _, dup := s.seen.LoadOrStore(req.RRN, struct{}{}); dup {
+		res := payResult{RRN: req.RRN, PayeeBank: req.PayeeBank, Outcome: outDup, Reason: "RRN_ALREADY_PROCESSED", At: start.Format(time.RFC3339Nano)}
+		return s.finish(res, start, time.Since(start))
+	}
 	ok, reason, e := s.admit(req.PayeeBank)
 	decision := time.Since(start)
 	res := payResult{RRN: req.RRN, PayeeBank: req.PayeeBank, PayeeFlag: e.Status,
@@ -163,19 +195,74 @@ func (s *paySwitch) pay(ctx context.Context, req payRequest) payResult {
 		return s.finish(res, start, decision)
 	}
 	res.Debited = true
+	debitedAt := time.Now().Unix()
 	good, timedOut := s.call(ctx, req.PayeeBank, "credit", req)
 	switch {
 	case good:
 		res.Outcome = outSuccess
+		s.enqueue(req, debitedAt)
 	case timedOut:
 		// Debited, but the payee bank never confirmed. This is the ambiguous
-		// state health-aware routing exists to avoid.
+		// state health-aware routing exists to avoid. It goes on the ledger as
+		// debited-and-unconfirmed, where the deadline watcher will find it.
 		res.Outcome, res.Reason = outPending, "PAYEE_BANK_NO_CONFIRMATION"
+		s.enqueue(req, debitedAt)
 	default:
 		s.call(ctx, req.PayerBank, "reverse", req)
 		res.Outcome, res.Reason = outReversed, "PAYEE_BANK_REJECTED"
 	}
 	return s.finish(res, start, decision)
+}
+
+// enqueue hands a debited payment to the settlement recorder. The debit time
+// travels with it, so a record that waits in the queue keeps its real deadline.
+func (s *paySwitch) enqueue(req payRequest, debitedAt int64) {
+	if s.records == nil {
+		return
+	}
+	s.recQueued.Add(1)
+	s.records <- settlementRecord{req: req, debitedAt: debitedAt}
+}
+
+// recordWorker writes queued payments to the settlement chaincode, keyed by RRN.
+func (s *paySwitch) recordWorker() {
+	for rec := range s.records {
+		r := rec.req
+		payer, payee := r.PayerVPA, r.PayeeVPA
+		if payer == "" {
+			payer = "payer-" + r.RRN + "@upi"
+		}
+		if payee == "" {
+			payee = "payee-" + r.RRN + "@upi"
+		}
+		// Only hashes of the customer identifiers go on the ledger.
+		err := s.recordFn("RecordPayment", r.RRN, r.MerchantID, r.PayerBank, r.PayeeBank,
+			strconv.FormatInt(r.Amount, 10), strconv.FormatInt(rec.debitedAt, 10), hashRef(payer), hashRef(payee))
+		switch {
+		case err == nil:
+			s.recDone.Add(1)
+		case fabric.Mentions(err, "duplicate"):
+			// The ledger already holds this RRN: the chaincode refused to process it twice.
+			s.recDup.Add(1)
+		case rec.attempts < 120:
+			// Ledger unavailable or slow: keep the record and try again shortly.
+			rec.attempts++
+			go func(rec settlementRecord) {
+				time.Sleep(time.Second)
+				s.records <- rec
+			}(rec)
+			continue
+		default:
+			s.recFailed.Add(1)
+			log.Printf("%s: giving up recording %s: %s", s.name, r.RRN, fabric.Describe(err))
+		}
+		s.recQueued.Add(-1)
+	}
+}
+
+func hashRef(v string) string {
+	sum := sha256.Sum256([]byte(v))
+	return hex.EncodeToString(sum[:])
 }
 
 // call sends one request to a bank through the operator hop and measures it.
@@ -306,6 +393,10 @@ func (s *paySwitch) state() map[string]any {
 		},
 		"proposals": proposals,
 		"recent":    recent,
+		"settlement": map[string]int64{
+			"waiting": s.recQueued.Load(), "recorded": s.recDone.Load(),
+			"duplicatesRefusedByLedger": s.recDup.Load(), "failed": s.recFailed.Load(),
+		},
 	}
 }
 
@@ -317,6 +408,8 @@ func main() {
 	window := flag.Duration("window", 5*time.Second, "measurement window")
 	propose := flag.Bool("propose", true, "measure banks and propose flag changes")
 	timeout := flag.Duration("bank-timeout", 3500*time.Millisecond, "how long to wait for a bank via the operator")
+	settle := flag.Bool("settlement", true, "record debited payments on the settlement chaincode")
+	recorders := flag.Int("recorders", 32, "concurrent settlement recorders")
 	flag.Parse()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -354,6 +447,23 @@ func main() {
 				log.Fatalf("%s: observer: %v", *name, err)
 			}
 		}()
+	}
+
+	if *settle {
+		cl, err := fabric.Connect("switch", "User1", *channel)
+		if err != nil {
+			log.Fatalf("%s: %v", *name, err)
+		}
+		defer cl.Close()
+		contract := cl.Contract(settlementChaincode)
+		s.recordFn = func(fn string, args ...string) error {
+			_, err := contract.SubmitTransaction(fn, args...)
+			return err
+		}
+		s.records = make(chan settlementRecord, 200000)
+		for i := 0; i < *recorders; i++ {
+			go s.recordWorker()
+		}
 	}
 
 	mux := http.NewServeMux()

@@ -62,15 +62,21 @@ services:
       service: drunix
     environment:
       - ORDERER_SNAPSHOTINTERVAL="16777216"
-      - ORDERER_CONSENSUS_WALDIR=/tmp/drunix-sharding/data_store/orderer/etcdraft/wal
-      - ORDERER_CONSENSUS_SNAPDIR=/tmp/drunix-sharding/data_store/orderer/etcdraft/snapshot
+      # Ledger, key-value store and Raft log all live on the orderer's data
+      # volume, so the channel survives the container being recreated.
+      - ORDERER_CONSENSUS_WALDIR=/var/hyperledger/production/orderer/etcdraft/wal
+      - ORDERER_CONSENSUS_SNAPDIR=/var/hyperledger/production/orderer/etcdraft/snapshot
       - ORDERER_GENERAL_MVCCENABLED=false
-      - ORDERER_FILELEDGER_KVSTORE="/tmp/drunix-sharding/dev_setup/data_store/orderer/kvstore"
-      - ORDERER_FILELEDGER_LOCATION="/tmp/drunix-sharding/dev_setup/data_store/orderer/blocks"
+      - ORDERER_FILELEDGER_KVSTORE=/var/hyperledger/production/orderer/kvstore
+      - ORDERER_FILELEDGER_LOCATION=/var/hyperledger/production/orderer/blocks
       - ORDERER_FILELEDGER_KVSTORECACHESIZE=2147483
       - ORDERER_FILELEDGER_ORGBLOCKCACHESIZE=107374
       - ORDERER_GENERAL_MAXBATCHSIZE=5000
       - ORDERER_GENERAL_BLOCKCUTTIME=2
+      # How long the orderer waits before cutting a block that is not yet full.
+      # Drunix reads this key (default 2s). A merchant payout takes three
+      # ledger steps, so this sets how fast "instant" settlement can be.
+      - ORDERER_GENERAL_DRUNIX_BLOCKCUTTIME=0.5
  
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0

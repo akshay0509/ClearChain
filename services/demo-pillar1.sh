@@ -3,9 +3,11 @@
 # flag it, every switch's cache updates, payments fail fast before any debit,
 # and after a cool-down the bank is probed and returned to healthy.
 #
-# Needs the network up with the healthflag chaincode deployed and BANKA/BANKB
-# registered (run ./bin/probe once), and the services built into ./bin.
-# Run from the services folder.
+# Needs the network up with the contracts deployed (tools/deploy-contracts.sh)
+# and the services built into ./bin. Run from the services folder.
+#
+# The switches run with -settlement=false here so this demo shows routing on
+# its own; demo-pillar2.sh covers what happens to each payment afterwards.
 set -u
 cd "$(dirname "$0")"
 mkdir -p logs
@@ -26,12 +28,15 @@ PIDS=()
 cleanup() { kill "${PIDS[@]}" 2>/dev/null; wait 2>/dev/null; }
 trap cleanup EXIT
 
+say "One-time setup: register the banks"
+./bin/setup || exit 1
+
 say "Starting bank systems, operator hop and two switches"
 ./bin/banksim > logs/banksim.log 2>&1 & PIDS+=($!)
 sleep 0.5
 ./bin/operator > logs/operator.log 2>&1 & PIDS+=($!)
-./bin/switch -name switch-1 -addr :9100 > logs/switch-1.log 2>&1 & PIDS+=($!)
-./bin/switch -name switch-2 -addr :9110 -propose=false > logs/switch-2.log 2>&1 & PIDS+=($!)
+./bin/switch -name switch-1 -addr :9100 -settlement=false > logs/switch-1.log 2>&1 & PIDS+=($!)
+./bin/switch -name switch-2 -addr :9110 -propose=false -settlement=false > logs/switch-2.log 2>&1 & PIDS+=($!)
 for url in http://localhost:9100 http://localhost:9110; do
   for _ in $(seq 1 50); do curl -sf "$url/state" > /dev/null && break; sleep 0.2; done
 done

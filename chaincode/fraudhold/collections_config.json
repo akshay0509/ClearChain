@@ -1,0 +1,29 @@
+[
+  {
+    "name": "caseBankA",
+    "policy": "OR('InvestigatorOrgMSP.member','BankAOrgMSP.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true
+  },
+  {
+    "name": "caseBankB",
+    "policy": "OR('InvestigatorOrgMSP.member','BankBOrgMSP.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true
+  },
+  {
+    "name": "caseSponsorBank",
+    "policy": "OR('InvestigatorOrgMSP.member','SponsorBankOrgMSP.member')",
+    "requiredPeerCount": 0,
+    "maxPeerCount": 1,
+    "blockToLive": 0,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true
+  }
+]

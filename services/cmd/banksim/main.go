@@ -7,6 +7,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"log"
@@ -35,6 +36,9 @@ type entry struct {
 	Debited  bool `json:"debited"`
 	Credited bool `json:"credited"`
 	Reversed bool `json:"reversed"`
+	// PaidOut: the bank paid this amount out of the settlement float it holds.
+	PaidOut bool  `json:"paidOut"`
+	Amount  int64 `json:"amount"`
 }
 
 type bank struct {
@@ -48,6 +52,9 @@ type server struct {
 	mu    sync.RWMutex
 	banks map[string]*bank
 	hang  time.Duration
+	// notify, if set, is told about every credit a bank applies, the way a core
+	// banking system tells the bank's own channels that money has landed.
+	notify string
 }
 
 func (s *server) bank(id string) *bank {
@@ -65,7 +72,7 @@ type payReq struct {
 func (s *server) handleOp(w http.ResponseWriter, r *http.Request) {
 	b := s.bank(r.PathValue("bank"))
 	op := r.PathValue("op")
-	if b == nil || (op != "debit" && op != "credit" && op != "reverse") {
+	if b == nil || (op != "debit" && op != "credit" && op != "reverse" && op != "payout") {
 		http.Error(w, "unknown bank or operation", http.StatusNotFound)
 		return
 	}
@@ -79,8 +86,8 @@ func (s *server) handleOp(w http.ResponseWriter, r *http.Request) {
 	b.requests++
 	b.mu.Unlock()
 
-	// Reversals are housekeeping and always honoured promptly.
-	if op != "reverse" {
+	// Reversals and float payouts are the bank's own bookkeeping and always go through.
+	if op == "debit" || op == "credit" {
 		if rand.Float64() < beh.HangRate {
 			select {
 			case <-time.After(s.hang):
@@ -113,8 +120,24 @@ func (s *server) handleOp(w http.ResponseWriter, r *http.Request) {
 		e.Credited = true
 	case "reverse":
 		e.Reversed = true
+	case "payout":
+		e.PaidOut = true
+	}
+	if req.Amount > 0 {
+		e.Amount = req.Amount
 	}
 	b.mu.Unlock()
+	if op == "credit" && s.notify != "" {
+		go func(bankID string) {
+			body, _ := json.Marshal(map[string]any{"bank": bankID, "rrn": req.RRN, "amount": req.Amount})
+			resp, err := http.Post(s.notify, "application/json", bytes.NewReader(body))
+			if err != nil {
+				log.Printf("credit notification for %s failed: %v", req.RRN, err)
+				return
+			}
+			resp.Body.Close()
+		}(r.PathValue("bank"))
+	}
 	writeJSON(w, map[string]string{"status": "OK", "rrn": req.RRN})
 }
 
@@ -164,6 +187,7 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request) {
 		Debits   int    `json:"debits"`
 		Credits  int    `json:"credits"`
 		Reversed int    `json:"reversed"`
+		Payouts  int    `json:"payouts"`
 	}
 	var rows []row
 	s.mu.RLock()
@@ -179,6 +203,9 @@ func (s *server) handleState(w http.ResponseWriter, r *http.Request) {
 			}
 			if e.Reversed {
 				rw.Reversed++
+			}
+			if e.PaidOut {
+				rw.Payouts++
 			}
 		}
 		b.mu.Unlock()
@@ -197,10 +224,15 @@ func writeJSON(w http.ResponseWriter, v any) {
 func main() {
 	addr := flag.String("addr", ":9101", "listen address")
 	hang := flag.Duration("hang", 8*time.Second, "how long a hung request stays silent")
+	notify := flag.String("notify", "", "URL told about every credit applied (the sponsor bank adapter)")
+	failRate := flag.Float64("healthy-fail-rate", 0.002, "share of requests a healthy bank answers with an error")
 	flag.Parse()
+	healthy := presets["healthy"]
+	healthy.FailRate = *failRate
+	presets["healthy"] = healthy
 
-	s := &server{banks: map[string]*bank{}, hang: *hang}
-	for _, id := range []string{"BANKA", "BANKB"} {
+	s := &server{banks: map[string]*bank{}, hang: *hang, notify: *notify}
+	for _, id := range []string{"BANKA", "BANKB", "SPONSORBANK"} {
 		s.banks[id] = &bank{Mode: "healthy", payments: map[string]*entry{}}
 	}
 	mux := http.NewServeMux()
@@ -208,6 +240,6 @@ func main() {
 	mux.HandleFunc("GET /bank/{bank}/payment/{rrn}", s.handlePayment)
 	mux.HandleFunc("POST /admin/bank/{bank}/mode", s.handleMode)
 	mux.HandleFunc("GET /admin/state", s.handleState)
-	log.Printf("bank simulator listening on %s (BANKA, BANKB)", *addr)
+	log.Printf("bank simulator listening on %s (BANKA, BANKB, SPONSORBANK)", *addr)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }

@@ -73,8 +73,12 @@ checkPrereqs
 
 PACKAGE_ID=$(peer lifecycle chaincode calculatepackageid ${CC_NAME}.tar.gz)
 
-## Install the chaincode on every org's lite peer (peer0), which is where it runs
-for org in $ALL_ORGS; do
+## Install the chaincode on the lite peers (peer0) that will run it. By default
+## that is every org. Set CC_INSTALL_ORGS (for example "3 4 7") to install only
+## on the orgs that endorse it, which is quicker and, for a chaincode with a
+## private data collection, keeps it off the peers of non-member orgs.
+INSTALL_ORGS=${CC_INSTALL_ORGS:-$ALL_ORGS}
+for org in $INSTALL_ORGS; do
   infoln "Installing chaincode on peer0.${ORG_NAMES[$org]}.."
   installChaincode $org 0
 done
@@ -82,7 +86,7 @@ done
 resolveSequence
 
 ## query whether the chaincode is installed
-queryInstalled 1 0
+queryInstalled ${INSTALL_ORGS%% *} 0
 
 ## approve the definition for every org through its committing peer (peer1).
 ## The channel's LifecycleEndorsement policy needs a majority of the orgs.
@@ -101,7 +105,7 @@ checkCommitReadiness 1 1 "${APPROVALS[@]}"
 commitChaincodeDefinition $ALL_ORGS
 
 ## query on every org to see that the definition committed successfully
-for org in $ALL_ORGS; do
+for org in $INSTALL_ORGS; do
   queryCommitted $org 0
 done
 
@@ -110,7 +114,7 @@ done
 if [ "$CC_INIT_FCN" = "NA" ]; then
   infoln "Chaincode initialization is not required"
 else
-  CONN_PEER=0 chaincodeInvokeInit $ALL_ORGS
+  CONN_PEER=0 chaincodeInvokeInit $INSTALL_ORGS
 fi
 
 exit 0

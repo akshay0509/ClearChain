@@ -27,6 +27,8 @@ func main() {
 	payer := flag.String("payer", "BANKA", "payer bank")
 	payee := flag.String("payee", "BANKB", "payee bank")
 	prefix := flag.String("prefix", "", "RRN prefix (default: derived from the start time)")
+	merchant := flag.String("merchant", "", "merchant ID, for payments collected through the aggregator")
+	burst := flag.Int("burst", 0, "send this many payments at the same instant, then stop")
 	flag.Parse()
 
 	if *prefix == "" {
@@ -42,7 +44,8 @@ func main() {
 
 	send := func(n int) {
 		defer wg.Done()
-		body, _ := json.Marshal(map[string]any{"rrn": fmt.Sprintf("%s%07d", *prefix, n), "payerBank": *payer, "payeeBank": *payee, "amount": 10000 + n%5000})
+		body, _ := json.Marshal(map[string]any{"rrn": fmt.Sprintf("%s%07d", *prefix, n), "payerBank": *payer, "payeeBank": *payee,
+			"amount": 10000 + n%5000, "merchantId": *merchant})
 		key := "ERROR"
 		var r result
 		resp, err := client.Post(*target+"/pay", "application/json", bytes.NewReader(body))
@@ -65,6 +68,16 @@ func main() {
 	}
 
 	start := time.Now()
+	if *burst > 0 {
+		for n := 1; n <= *burst; n++ {
+			wg.Add(1)
+			go send(n)
+		}
+		wg.Wait()
+		fmt.Println("sent", *burst, "payments at once (RRN prefix "+*prefix+"), all answered in", time.Since(start).Round(time.Millisecond))
+		fmt.Println("totals:", summary(total))
+		return
+	}
 	tick := time.NewTicker(time.Second / time.Duration(*rate))
 	report := time.NewTicker(time.Second)
 	defer tick.Stop()

@@ -8,13 +8,17 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"sync"
 	"time"
 
 	"clearchain/services/internal/flagcache"
@@ -28,7 +32,21 @@ func main() {
 	channel := flag.String("channel", "mychannel", "channel name")
 	window := flag.Duration("window", 5*time.Second, "measurement window")
 	timeout := flag.Duration("bank-timeout", 3*time.Second, "how long to wait for a bank")
+	settlementFile := flag.String("settlement-file", "", "CSV to append every credit a bank confirmed to (rrn,bank,amount)")
 	flag.Parse()
+
+	// The operator's own record of what was settled, kept outside the ledger.
+	// Reconciliation compares it with the ledger using plain SQL.
+	var fileMu sync.Mutex
+	var out *os.File
+	if *settlementFile != "" {
+		f, err := os.OpenFile(*settlementFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			log.Fatalf("operator: %v", err)
+		}
+		defer f.Close()
+		out = f
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -59,9 +77,20 @@ func main() {
 			timedOut = true
 		}
 		failed := err != nil || resp.StatusCode >= 400
-		// Reversals are housekeeping, not a measure of the bank's payment path.
-		if op != "reverse" {
+		// Reversals and float payouts are housekeeping, not a measure of the bank's payment path.
+		if op == "debit" || op == "credit" {
 			meter.Record(bank, elapsed, timedOut, failed)
+		}
+		if out != nil && op == "credit" && !failed {
+			var req struct {
+				RRN    string `json:"rrn"`
+				Amount int64  `json:"amount"`
+			}
+			if json.Unmarshal(body, &req) == nil {
+				fileMu.Lock()
+				fmt.Fprintln(out, req.RRN+","+bank+","+strconv.FormatInt(req.Amount, 10))
+				fileMu.Unlock()
+			}
 		}
 
 		switch {
