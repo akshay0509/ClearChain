@@ -3,3 +3,6 @@ services/bin/
 services/logs/
 # Vendored chaincode dependencies are created at deploy time
 chaincode/*/vendor/
+# Chaincode packages built at deploy time
+chaincode/*/*.tar.gz
+clearchain-test-network/*.tar.gz

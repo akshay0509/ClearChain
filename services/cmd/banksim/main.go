@@ -55,6 +55,7 @@ type server struct {
 	// notify, if set, is told about every credit a bank applies, the way a core
 	// banking system tells the bank's own channels that money has landed.
 	notify string
+	accts  accounts
 }
 
 func (s *server) bank(id string) *bank {
@@ -231,7 +232,7 @@ func main() {
 	healthy.FailRate = *failRate
 	presets["healthy"] = healthy
 
-	s := &server{banks: map[string]*bank{}, hang: *hang, notify: *notify}
+	s := &server{banks: map[string]*bank{}, hang: *hang, notify: *notify, accts: accounts{byID: map[string]*account{}}}
 	for _, id := range []string{"BANKA", "BANKB", "SPONSORBANK"} {
 		s.banks[id] = &bank{Mode: "healthy", payments: map[string]*entry{}}
 	}
@@ -240,6 +241,7 @@ func main() {
 	mux.HandleFunc("GET /bank/{bank}/payment/{rrn}", s.handlePayment)
 	mux.HandleFunc("POST /admin/bank/{bank}/mode", s.handleMode)
 	mux.HandleFunc("GET /admin/state", s.handleState)
+	s.registerAccountRoutes(mux)
 	log.Printf("bank simulator listening on %s (BANKA, BANKB, SPONSORBANK)", *addr)
 	log.Fatal(http.ListenAndServe(*addr, mux))
 }
