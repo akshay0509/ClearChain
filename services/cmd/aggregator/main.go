@@ -53,7 +53,7 @@ func main() {
 		seen time.Time
 	}
 	jobs := make(chan job, 200000)
-	var paid, failed, duplicates, conflictRetries atomic.Int64
+	var paid, failed, duplicates, conflictRetries, catchUps atomic.Int64
 	var mu sync.Mutex
 	var commitMs []float64 // confirmation event seen -> payout committed
 
@@ -61,8 +61,20 @@ func main() {
 		go func() {
 			for j := range jobs {
 				// A payout that loses a race for its float lane is simply sent again.
-				_, retries, err := fabric.SubmitRetry(contract, 25, "PayoutMerchant", j.rrn)
-				conflictRetries.Add(int64(retries))
+				// The confirmation event comes from the aggregator's own peer; the
+				// sponsor bank's peer, the other endorser, can be a block behind and
+				// still see the payment as unconfirmed. Give it a moment to catch up.
+				var err error
+				for wait := 0; ; wait++ {
+					var retries int
+					_, retries, err = fabric.SubmitRetry(contract, 25, "PayoutMerchant", j.rrn)
+					conflictRetries.Add(int64(retries))
+					if err == nil || !fabric.Mentions(err, "confirmed first") || wait >= 20 {
+						break
+					}
+					catchUps.Add(1)
+					time.Sleep(150 * time.Millisecond)
+				}
 				switch {
 				case err == nil:
 					paid.Add(1)
@@ -125,6 +137,7 @@ func main() {
 			"duplicatesRefused":   duplicates.Load(),
 			"waiting":             len(jobs),
 			"laneConflictRetries": conflictRetries.Load(),
+			"waitedForEndorser":   catchUps.Load(),
 			"confirmedToCommitMs": map[string]any{"samples": len(d), "p50": pct(0.50), "p95": pct(0.95), "max": pct(1)},
 		})
 	})

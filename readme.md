@@ -30,6 +30,7 @@ services/
   cmd/watcher/               Turnaround-time watcher: requests auto-reversal before the deadline
   cmd/scdemo/                Pillar 3 driver: each supplier acts with its own identity
   cmd/fraudemo/              Pillar 4 driver: banks and the Investigator act with their own identities
+  cmd/dashboard/             Web dashboard: three views, reads each org's YugabyteDB
   cmd/ledger/                Query or submit to any contract as any org
   cmd/loadgen/               Payment load, steady or in a burst
   cmd/probe/                 Checks cross-org endorsement and event delivery
@@ -174,6 +175,28 @@ cd ~/ClearChain/services && mkdir -p bin && go build -o bin/ ./cmd/...
 cd ~/ClearChain/clearchain-test-network && ./network.sh down
 ```
 
+## Dashboard
+
+A web dashboard with the three views the proposal describes: bank health and routing (including a settlement summary), supply-chain payments, and fraud tracing and holds.
+
+```bash
+cd ~/ClearChain/services && ./bin/dashboard
+```
+
+Then open http://localhost:8080. It refreshes every two seconds.
+
+- **It reads YugabyteDB.** Every view comes from SQL on an org's own state database; nothing is cached or duplicated. Live routing decisions come from the switches' own `/state` endpoints, and appear while switches are running.
+- **Access is by org.** Pick who you are in "Viewing as". The dashboard reads only that org's database. Drunix stores each private collection only in its member orgs' databases, so the Switch sees that a supply chain exists but not its amounts, and Bank B sees the holds on its customer's account but not the victims' details.
+- **It is read-only.** All changes go through the contracts.
+
+Flags: `-addr` (default `:8080`), `-db-host` (default `localhost`), `-switches` (default `http://localhost:9100,http://localhost:9110`).
+
+To give the views something to show, run the four demos first. The demos stop their services when they finish, so for live routing decisions start `./bin/banksim`, `./bin/operator`, `./bin/switch -settlement=false` and `./bin/loadgen -rate 8 -duration 30m`. Every demo supply chain gets paid, so to see open obligations on the 43B(h) deadline table, leave one unpaid:
+
+```bash
+./bin/scdemo -release=false -banks ""
+```
+
 ### Unit tests
 
 ```bash
@@ -311,7 +334,6 @@ If you edit on Windows and run in WSL, `tools/wsl-sync.sh` copies the working co
 
 ## What is still open
 
-- **Dashboard.** The proposal's three-view dashboard (bank health and routing, supply-chain flow, fraud tracing and holds) is not built. Every view's data is already queryable in each org's YugabyteDB.
 - **Scaling load test.** Throughput as lite peers and validation services are added is not measured. Each org currently runs one of each.
 - **Mutual TLS and Sparse Block Delivery.** Both are named in the proposal and not yet checked or configured.
 - **Pillar 1 health measurements** are public on the ledger; the proposal puts them in a private collection.

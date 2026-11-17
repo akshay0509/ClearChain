@@ -35,6 +35,8 @@ const (
 	day       = 86400
 )
 
+var release = true
+
 var endorsers = client.WithEndorsingOrganizations("BuyerOrgMSP", "BankAOrgMSP", "BankBOrgMSP")
 
 type actor struct {
@@ -138,6 +140,7 @@ func expectRefusal(what string, err error) error {
 
 func main() {
 	bankURL := flag.String("banks", "http://localhost:9101", "bank systems base URL (empty to skip crediting)")
+	flag.BoolVar(&release, "release", true, "release the buyer's payment; false leaves the chain open, so its 43B(h) deadlines stay live")
 	flag.Parse()
 	if err := run(*bankURL); err != nil {
 		fmt.Fprintln(os.Stderr, "\nFAILED:", fabric.Describe(err))
@@ -308,6 +311,12 @@ func run(bankURL string) error {
 		return errors.New("the public record leaks an amount or invoice reference")
 	}
 	fmt.Printf("   The Switch org can still see that the obligations exist and their dates (%d bytes, no amounts or invoice references)\n", len(raw))
+
+	if !release {
+		fmt.Println()
+		fmt.Println("Chain " + chain + " left open: its obligations stay on the 43B(h) deadline view.")
+		return nil
+	}
 
 	say("The buyer releases one payment of %s", rupees(100_000_000))
 	if err := expectRefusal("Tier-1 releasing the buyer's payment", third(t1.submit("ReleasePayment", 0, "", chain, "UTR"+run))); err != nil {

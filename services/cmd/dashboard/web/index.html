@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClearChain Dashboard</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --text: #17202a; --muted: #5b6673; --line: #e3e7ec;
+  --accent: #2457c5; --ok: #1d8a4e; --ok-bg: #e4f5ec; --bad: #c0362c; --bad-bg: #fbe7e5;
+  --warn: #a8640a; --warn-bg: #fdf1dc; --info-bg: #e8eefb; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c; --panel: #1a2029; --text: #e6eaf0; --muted: #98a3b1; --line: #2a323d;
+    --accent: #7aa2ff; --ok: #4cc287; --ok-bg: #173527; --bad: #ff7b70; --bad-bg: #3d1d1b;
+    --warn: #f0b153; --warn-bg: #3a2c14; --info-bg: #1d2840;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; position: sticky; top: 0; z-index: 2; }
+header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+header .who { display: flex; gap: 8px; align-items: center; }
+select { font: inherit; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+header .src { color: var(--muted); font-size: 12.5px; }
+nav { display: flex; gap: 4px; padding: 0 20px; background: var(--panel); border-bottom: 1px solid var(--line); overflow-x: auto; }
+nav button { font: inherit; border: 0; background: none; color: var(--muted); padding: 11px 14px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+nav button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+main { padding: 18px 20px 40px; max-width: 1400px; margin: 0 auto; }
+h2 { font-size: 15px; margin: 22px 0 10px; }
+h2:first-child { margin-top: 4px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.info { background: var(--info-bg); color: var(--accent); }
+.pill.dim { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.bank { border-left: 4px solid var(--line); }
+.bank.HEALTHY { border-left-color: var(--ok); } .bank.DEGRADED { border-left-color: var(--bad); } .bank.PROBING { border-left-color: var(--warn); }
+.bank .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.bank .name { font-weight: 600; font-size: 15px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+.stat .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .l { color: var(--muted); font-size: 12px; }
+.note { background: var(--info-bg); border-radius: 8px; padding: 9px 12px; font-size: 13px; margin-bottom: 14px; }
+.note.warn { background: var(--warn-bg); }
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px 0; padding: 6px 0 4px; }
+.node { min-width: 150px; flex: 0 1 190px; border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; background: var(--bg); }
+.node .n { font-weight: 600; }
+.edge { min-width: 150px; flex: 0 1 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0 6px; text-align: center; gap: 3px; }
+.edge .arrow { width: 100%; height: 2px; background: var(--muted); position: relative; margin: 4px 0; }
+.edge .arrow::after { content: ""; position: absolute; right: -1px; top: -4px; border: 5px solid transparent; border-left: 7px solid var(--muted); }
+.edge .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; min-width: 80px; }
+.bar > i { display: block; height: 100%; background: var(--ok); }
+.hop { display: grid; grid-template-columns: minmax(220px, 1.4fr) repeat(4, minmax(90px, 1fr)) minmax(120px, 1fr); gap: 4px 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 13px; align-items: center; }
+.hop.head { color: var(--muted); font-size: 12px; }
+.hop .num { text-align: right; font-variant-numeric: tabular-nums; }
+.empty { color: var(--muted); padding: 10px 0; }
+.err { background: var(--bad-bg); color: var(--bad); padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; }
+code { font-family: var(--mono); font-size: 12.5px; }
+@media (max-width: 640px) {
+  header, nav, main { padding-left: 16px; padding-right: 16px; }
+  .hop { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>ClearChain</h1>
+  <div class="who"><label for="org" class="muted">Viewing as</label><select id="org"></select></div>
+  <div class="src" id="src"></div>
+</header>
+<nav id="tabs">
+  <button data-tab="health">Bank health &amp; routing</button>
+  <button data-tab="supply">Supply-chain payments</button>
+  <button data-tab="fraud">Fraud tracing &amp; holds</button>
+</nav>
+<main id="view"><p class="muted">Loading…</p></main>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const store = { get(k, d) { try { return localStorage.getItem(k) ?? d; } catch { return d; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+function rupees(paise) {
+  if (paise === null || paise === undefined) return "—";
+  const neg = paise < 0; let p = Math.abs(Math.round(paise));
+  const r = Math.floor(p / 100), ps = p % 100;
+  let s = String(r);
+  if (s.length > 3) {
+    const tail = s.slice(-3); let head = s.slice(0, -3); const parts = [];
+    while (head.length > 2) { parts.unshift(head.slice(-2)); head = head.slice(0, -2); }
+    if (head) parts.unshift(head);
+    s = parts.join(",") + "," + tail;
+  }
+  return (neg ? "-" : "") + "₹" + s + (ps ? "." + String(ps).padStart(2, "0") : "");
+}
+const nowS = () => Date.now() / 1000;
+function ago(t) {
+  if (!t) return "—";
+  const d = Math.max(0, Math.round(nowS() - t));
+  if (d < 60) return d + "s ago";
+  if (d < 3600) return Math.floor(d / 60) + "m ago";
+  if (d < 86400) return Math.floor(d / 3600) + "h ago";
+  return Math.floor(d / 86400) + "d ago";
+}
+const clock = (t) => t ? new Date(t * 1000).toLocaleTimeString() : "—";
+const day = (t) => t ? new Date(t * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "—";
+const short = (h) => h ? esc(h.slice(0, 8)) + "…" : "—";
+const statusPill = (s) => {
+  const cls = { HEALTHY: "ok", DEGRADED: "bad", PROBING: "warn", SUCCESS: "ok", DECLINED: "bad", PENDING: "warn", DUPLICATE: "dim",
+    FAILED_REVERSED: "warn", PAYER_FAILED: "dim", ACTIVE: "warn", DISBURSED: "ok", RELEASED: "dim", PAID: "ok",
+    REGISTERED: "warn", WITHDRAWN: "dim", EXCLUDED: "dim", OPEN: "info", COMPLETE: "ok", PENDING_REPAYMENT: "warn" }[s] || "dim";
+  return `<span class="pill ${cls}">${esc(s)}</span>`;
+};
+const table = (head, rows, empty) => rows.length
+  ? `<div class="scroll"><table><thead><tr>${head.map((h) => `<th${h.startsWith("#") ? ' class="num"' : ""}>${esc(h.replace(/^#/, ""))}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`
+  : `<div class="empty">${esc(empty)}</div>`;
+
+let orgs = [], current = { org: store.get("cc-org", "npci"), tab: store.get("cc-tab", "health") }, timer = null, busy = false;
+
+async function getJSON(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  const body = await r.json();
+  if (!r.ok) throw new Error(body.error || r.statusText);
+  return body;
+}
+
+// ---------- view 1: bank health and routing ----------
+function viewHealth(st, switches) {
+  const hf = st.healthflag || {};
+  const banks = Object.fromEntries((hf.bank || []).map((b) => [b.bankId, b]));
+  const obs = {};
+  for (const o of hf.obs || []) (obs[o.bankId] ||= {})[o.observerMsp] = o;
+  const cfg = (hf.config || [])[0];
+  const flags = (hf.flag || []).slice().sort((a, b) => a.bankId.localeCompare(b.bankId));
+
+  const obsLine = (o, who) => o
+    ? `<dt>${who}</dt><dd>${o.txCount} payments, ${o.timeoutCount} timed out, ${o.failureCount} failed, p95 ${o.p95LatencyMs} ms <span class="muted">· ${ago(o.recordedAt)}</span></dd>`
+    : `<dt>${who}</dt><dd class="muted">no measurement yet</dd>`;
+  const cards = flags.map((f) => `
+    <div class="panel bank ${esc(f.status)}">
+      <div class="top"><span class="name">${esc(banks[f.bankId]?.name || f.bankId)}</span>${statusPill(f.status)}</div>
+      <dl class="kv">
+        <dt>Since</dt><dd>${clock(f.since)} <span class="muted">(${ago(f.since)})</span></dd>
+        <dt>Reason</dt><dd>${esc(f.reason)}</dd>
+        <dt>When degraded</dt><dd>${f.mode === "HOLD_RETRY" ? `hold and retry up to ${f.holdMs} ms` : "fail fast before any debit"}</dd>
+        ${obsLine(obs[f.bankId]?.SwitchOrgMSP, "Switch saw")}
+        ${obsLine(obs[f.bankId]?.NPCIOrgMSP, "NPCI saw")}
+      </dl>
+      <div class="small muted" style="margin-top:6px">change #${f.seq} · tx <span class="mono">${short(f.txId)}</span></div>
+    </div>`).join("");
+
+  const history = (hf.log || []).filter((l) => l.seq > 0).sort((a, b) => b.since - a.since || b.seq - a.seq).slice(0, 20).map((l) =>
+    `<tr><td>${clock(l.since)}</td><td>${esc(l.bankId)}</td><td>${statusPill(l.status)}</td><td>${esc(l.reason)}</td><td class="mono">${esc(l.proposedBy)}</td></tr>`);
+
+  const sw = (switches || []).map((s) => {
+    if (!s.up) return `<div class="panel"><b>${esc(s.url)}</b> <span class="pill dim">not running</span><div class="small muted">Start a switch (for example with demo-pillar1.sh) to see live routing decisions.</div></div>`;
+    const x = s.state, d = x.decisionMicros || {};
+    const outcomes = Object.entries(x.outcomes || {}).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${statusPill(k)} <b>${v}</b>`).join(" &nbsp; ");
+    const recent = (x.recent || []).slice(-10).reverse().map((p) =>
+      `<tr><td>${new Date(p.at).toLocaleTimeString()}</td><td class="mono">${esc(p.rrn)}</td><td>${esc(p.payeeBank)} ${p.payeeFlag ? statusPill(p.payeeFlag) : ""}</td><td>${statusPill(p.outcome)}</td><td class="small">${esc(p.reason || "")}</td><td class="num">${p.debited ? "yes" : "no"}</td><td class="num">${(p.decisionMicros ?? 0).toFixed(1)}</td></tr>`);
+    return `<div class="panel">
+      <div class="top" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px"><b>${esc(x.switch)}</b><span class="small muted">${esc(s.url)}</span></div>
+      <div class="stats" style="margin:8px 0 10px">
+        <div class="stat"><div class="v">${d.p50 ? d.p50.toFixed(1) : "—"} µs</div><div class="l">routing decision, median</div></div>
+        <div class="stat"><div class="v">${d.p99 ? d.p99.toFixed(1) : "—"} µs</div><div class="l">99th percentile</div></div>
+        <div class="stat"><div class="v">${d.samples ?? 0}</div><div class="l">decisions</div></div>
+      </div>
+      <div style="margin-bottom:10px">${outcomes || '<span class="muted">no payments yet</span>'}</div>
+      ${table(["Time", "RRN", "Payee bank (flag)", "Outcome", "Reason", "#Debited", "#Decision µs"], recent, "No payments yet.")}
+    </div>`;
+  }).join("");
+
+  const s = st.settlement;
+  let settle = `<div class="empty">The settlement contract has no data in this database yet.</div>`;
+  if (s) {
+    const pay = s.payments || {};
+    const cnt = (k) => pay[k]?.count || 0;
+    const revs = (s.reversals || []).map((r) =>
+      `<tr><td class="mono">${esc(r.rrn)}</td><td class="num">${rupees(r.amount)}</td><td>${clock(r.reversedAt)}</td><td class="num">${r.secondsBeforeDeadline}s</td><td>${r.withinDeadline ? '<span class="pill ok">within deadline</span>' : '<span class="pill bad">late</span>'}</td><td>${r.floatAdvanced ? "yes" : "no"}</td></tr>`);
+    settle = `<div class="stats" style="margin-bottom:12px">
+      <div class="stat"><div class="v">${rupees(s.float.total)}</div><div class="l">settlement float (${s.float.lanes} lanes)</div></div>
+      <div class="stat"><div class="v">${s.payouts.count}</div><div class="l">merchant payouts · ${rupees(s.payouts.merchant)} paid</div></div>
+      <div class="stat"><div class="v">${rupees(s.payouts.fee)}</div><div class="l">aggregator fee · GST ${rupees(s.payouts.gst)}</div></div>
+      <div class="stat"><div class="v">${cnt("DEBITED")}</div><div class="l">debited, awaiting confirmation</div></div>
+      <div class="stat"><div class="v">${cnt("PAID_OUT")} / ${cnt("REIMBURSED")}</div><div class="l">paid out / reimbursed to float</div></div>
+      <div class="stat"><div class="v">${cnt("REVERSED")}</div><div class="l">auto-reversed</div></div>
+    </div>
+    <div class="small muted" style="margin-bottom:6px">Recent auto-reversals</div>
+    ${table(["RRN", "#Amount", "Reversed", "#Before deadline", "Deadline", "Float advanced"], revs, "No reversals yet.")}`;
+  }
+
+  return `
+    <h2>Bank health flags</h2>
+    ${cfg ? `<div class="small muted" style="margin:-4px 0 10px">Degraded at ≥ ${cfg.timeoutRateBps / 100}% timeouts, ≥ ${cfg.failureRateBps / 100}% failures or p95 ≥ ${cfg.p95LatencyMs} ms over ≥ ${cfg.minSample} payments · cool-down ${cfg.cooldownSeconds}s · probe share ${cfg.probeShareBps / 100}% · set by NPCI</div>` : ""}
+    ${flags.length ? `<div class="grid">${cards}</div>` : `<div class="panel empty">No banks registered on the health-flag contract yet.</div>`}
+    <h2>Flag changes</h2>
+    <div class="panel">${table(["Committed", "Bank", "New status", "Reason", "Proposed by"], history, "No flag changes yet.")}</div>
+    <h2>Routing decisions (live from each switch)</h2>
+    ${sw || '<div class="panel empty">No switches configured.</div>'}
+    <h2>Settlement</h2>
+    <div class="panel">${settle}</div>`;
+}
+
+// ---------- view 2: supply-chain payments ----------
+const DAY = 86400;
+function deadline(o) {
+  if (!o.covered43Bh) return { flag: "NOT_COVERED", text: "43B(h) not applicable (medium)", cls: "dim" };
+  if (o.status === "PAID") return o.paidOnTime ? { flag: "PAID", text: "paid within 43B(h)", cls: "ok" } : { flag: "LATE", text: `paid ${o.daysLate} day(s) late`, cls: "bad" };
+  const t = nowS();
+  if (t > o.statutoryDueDate) return { flag: "OVERDUE", text: `${Math.ceil((t - o.statutoryDueDate) / DAY)} day(s) overdue`, cls: "bad" };
+  const left = Math.floor((o.statutoryDueDate - t) / DAY);
+  return left <= 3 ? { flag: "DUE_SOON", text: `${left} day(s) left`, cls: "warn" } : { flag: "OK", text: `${left} days left`, cls: "ok" };
+}
+
+function viewSupply(st) {
+  const sc = st.supplychain || { public: {}, private: {} };
+  const pub = sc.public || {}, priv = sc.private || {};
+  const parties = Object.fromEntries((pub.party || []).map((p) => [p.partyId, p]));
+  const obs = Object.fromEntries((pub.ob || []).map((o) => [o.obligationId, o]));
+  const terms = Object.fromEntries((priv.terms || []).map((t) => [t.obligationId, t]));
+  const releases = Object.fromEntries((priv.release || []).map((r) => [r.chainId, r]));
+  const chains = (pub.chain || []).slice().sort((a, b) => b.createdAt - a.createdAt);
+  const org = st.org;
+
+  const note = sc.member
+    ? `<div class="note">${esc(org.label)} is a member of the <code>scTerms</code> collection, so amounts, invoice references and payout splits are shown from its own database.</div>`
+    : `<div class="note warn">${esc(org.label)} is not a member of the <code>scTerms</code> collection. Its database records that each obligation exists, who owes whom and the dates, but holds no amounts, invoice references or payout splits.</div>`;
+
+  const nodeHtml = (id, tier) => {
+    const p = parties[id] || { name: id };
+    return `<div class="node"><div class="small muted">${tier === 0 ? "Anchor buyer" : "Tier-" + tier}</div><div class="n">${esc(p.name)}</div>
+      <div class="small muted">${p.class ? esc(p.class) + " · " : ""}${esc(p.udyam || p.bankId || "")}</div></div>`;
+  };
+
+  const chainHtml = chains.slice(0, 6).map((c) => {
+    const list = c.obligationIds.map((id) => obs[id]).filter(Boolean).filter((o) => o.status !== "WITHDRAWN");
+    // Walk the main line: level 1, then each next level's obligation owed by the previous creditor.
+    let flow = "", cursor = c.buyerId, tier = 0;
+    flow += nodeHtml(cursor, tier);
+    for (let lvl = 1; lvl <= 10; lvl++) {
+      const o = list.find((x) => x.level === lvl && x.debtorId === cursor);
+      if (!o) break;
+      const t = terms[o.obligationId], dl = deadline(o);
+      flow += `<div class="edge">
+          <span class="amt">${t ? rupees(t.amount) : '<span class="muted">amount private</span>'}</span>
+          <div class="arrow"></div>
+          <span>${statusPill(o.status)}</span>
+          <span class="pill ${dl.cls}">${esc(dl.text)}</span>
+          ${o.approverId ? `<span class="small muted">approved by ${esc(parties[o.approverId]?.name || o.approverId)}${o.approvedAt ? "" : " (pending)"}</span>` : `<span class="small muted">buyer's own obligation</span>`}
+        </div>`;
+      cursor = o.creditorId; tier++;
+      flow += nodeHtml(cursor, tier);
+    }
+    const others = list.filter((o) => !flow.includes(`>${esc(parties[o.creditorId]?.name || o.creditorId)}<`));
+    const rel = releases[c.chainId];
+    const credits = rel ? rel.credits.map((x) => `<tr><td>Tier-${x.level}</td><td>${esc(x.name)}</td><td>${esc(x.bankId)}</td><td class="num">${rupees(x.received)}</td><td class="num">${rupees(x.passedDown)}</td><td class="num"><b>${rupees(x.net)}</b></td></tr>`) : [];
+    return `<div class="panel">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+        <div><b class="mono">${esc(c.chainId)}</b> &nbsp;${statusPill(c.status)}</div>
+        <div class="small muted">opened ${day(c.createdAt)}${c.releasedAt ? ` · released ${clock(c.releasedAt)} as payment <span class="mono">${esc(c.paymentRef)}</span>, tx <span class="mono">${short(c.releaseTxId)}</span>` : ""}</div>
+      </div>
+      <div class="flow">${flow}</div>
+      ${others.length ? `<div class="small muted">Also in this chain: ${others.map((o) => esc(o.obligationId)).join(", ")}</div>` : ""}
+      ${c.status === "RELEASED" ? `<div class="small muted" style="margin:10px 0 4px">One transaction credited every tier:</div>` +
+        (rel ? table(["Tier", "Party", "Bank", "#Owed from above", "#Passed down", "#Credited"], credits, "")
+             : `<div class="empty">The split is private to the collection members.</div>`) : ""}
+    </div>`;
+  }).join("");
+
+  const open = (pub.ob || []).filter((o) => o.status === "ACTIVE" || o.status === "REGISTERED").map((o) => ({ o, d: deadline(o) }));
+  const rank = { OVERDUE: 0, DUE_SOON: 1, OK: 2, NOT_COVERED: 3 };
+  open.sort((a, b) => (rank[a.d.flag] - rank[b.d.flag]) || (a.o.statutoryDueDate - b.o.statutoryDueDate));
+  const rows = open.map(({ o, d }) => `<tr><td><span class="pill ${d.cls}">${esc(d.flag)}</span></td><td>${esc(d.text)}</td>
+    <td>${esc(parties[o.debtorId]?.name || o.debtorId)}</td><td>${esc(parties[o.creditorId]?.name || o.creditorId)} <span class="small muted">${esc(o.creditorClass)}</span></td>
+    <td class="num">${terms[o.obligationId] ? rupees(terms[o.obligationId].amount) : '<span class="muted">private</span>'}</td><td>${o.covered43Bh ? day(o.statutoryDueDate) : "—"}</td>
+    <td>${(d.flag === "OVERDUE" || d.flag === "DUE_SOON") ? `<span class="small">${esc(parties[o.debtorId]?.name || o.debtorId)}'s tax deduction at risk</span>` : ""}</td></tr>`);
+
+  return `${note}
+    <h2>Section 43B(h) deadlines (unpaid obligations)</h2>
+    <div class="panel">${table(["Status", "Time left", "Debtor", "Creditor", "#Amount", "Statutory date", ""], rows, "Nothing outstanding.")}</div>
+    <h2>Payment chains ${chains.length > 6 ? `<span class="small muted">(latest 6 of ${chains.length})</span>` : ""}</h2>
+    ${chainHtml || '<div class="panel empty">No supply chains yet. Run demo-pillar3.sh.</div>'}`;
+}
+
+// ---------- view 3: fraud tracing and holds ----------
+function viewFraud(st) {
+  const fh = st.fraudhold || { public: {}, details: {} };
+  const pub = fh.public || {}, details = fh.details || {};
+  const transfers = Object.fromEntries((pub.transfer || []).map((t) => [t.rrn, t]));
+  const holds = Object.fromEntries((pub.hold || []).map((h) => [h.holdId, h]));
+  const complaints = (pub.complaint || []).slice().sort((a, b) => b.filedAt - a.filedAt);
+  const orders = (pub.order || []).slice().sort((a, b) => b.orderedAt - a.orderedAt);
+  const org = st.org;
+  const caseDetails = (key) => {
+    const d = details[key];
+    if (!d) return '<span class="small muted">private to the victim\'s bank and the Investigator</span>';
+    return `<span class="small">${Object.entries(d).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(" · ")}</span>`;
+  };
+
+  const cRows = complaints.map((c) => {
+    const pct = c.amountLost ? Math.min(100, Math.round(100 * c.recovered / c.amountLost)) : 0;
+    return `<tr><td class="mono">${esc(c.complaintId)}</td><td>${esc(c.victimBank)}</td><td class="mono">${esc(c.caseRef)}</td>
+      <td class="num">${rupees(c.amountLost)}</td><td class="num">${rupees(c.held)}</td>
+      <td><div class="small">${rupees(c.recovered)} (${pct}%)</div><div class="bar"><i style="width:${pct}%"></i></div></td>
+      <td>${c.overlapsWith?.length ? `<span class="pill warn">overlaps ${esc(c.overlapsWith.join(", "))}</span>` : ""}</td>
+      <td>${caseDetails("complaint:" + c.complaintId)}</td></tr>`;
+  });
+
+  const traces = complaints.slice(0, 4).map((c) => {
+    const rows = [];
+    const walk = (rrn, depth) => {
+      const t = transfers[rrn];
+      if (!t || depth > 25) return;
+      const avail = t.tainted - t.movedOn - t.held;
+      const hs = (t.holdIds || []).map((id) => holds[id]).filter(Boolean)
+        .map((h) => `${statusPill(h.status)} <span class="mono small">${esc(h.holdId)}</span> ${rupees(h.amount)}`).join("<br>");
+      rows.push(`<div class="hop"><div style="padding-left:${(depth - 1) * 18}px"><span class="mono">${esc(t.rrn)}</span><br>
+          <span class="small muted">${esc(t.fromBank)} → <b>${esc(t.toBank)}</b> account ${short(t.toAccountHash)}</span></div>
+          <div class="num">${rupees(t.tainted)}<div class="small muted">victim money</div></div>
+          <div class="num">${rupees(t.movedOn)}<div class="small muted">moved on / recovered</div></div>
+          <div class="num">${rupees(t.held)}<div class="small muted">held now</div></div>
+          <div class="num">${rupees(Math.max(0, avail))}<div class="small muted">still holdable</div></div>
+          <div>${hs || '<span class="small muted">no hold</span>'}</div></div>`);
+      for (const ch of t.children || []) walk(ch, depth + 1);
+    };
+    for (const r of c.originRrns) walk(r, 1);
+    return `<div class="panel"><div style="margin-bottom:4px"><b class="mono">${esc(c.complaintId)}</b> <span class="small muted">· ${esc(c.victimBank)} customer lost ${rupees(c.amountLost)}</span></div>
+      ${rows.length ? rows.join("") : '<div class="empty">The receiving bank has not recorded these payments yet.</div>'}</div>`;
+  }).join("");
+
+  const hRows = (pub.hold || []).slice().sort((a, b) => b.placedAt - a.placedAt).slice(0, 30).map((h) =>
+    `<tr><td class="mono">${esc(h.holdId)}</td><td class="mono">${esc(h.complaintId)}</td><td>${esc(h.bankId)} <span class="small muted">${short(h.accountHash)}</span></td>
+     <td class="num">${rupees(h.amount)}</td><td class="mono">${esc(h.legalProvision)}</td><td class="mono">${esc(h.caseRef)}</td><td>${statusPill(h.status)}</td>
+     <td class="small">${clock(h.placedAt)}${h.closedReason ? ` · ${esc(h.closedReason)}` : ""}</td></tr>`);
+
+  const oHtml = orders.slice(0, 6).map((o) => {
+    const shares = o.shares.map((s) => `<tr><td class="mono">${esc(s.complaintId)}</td><td>${esc(s.victimBank)}</td><td class="num">${rupees(s.amountLost)}</td><td class="num">${rupees(s.heldHere)}</td><td class="num"><b>${rupees(s.amount)}</b></td><td>${s.repaid ? `<span class="pill ok">repaid ${clock(s.repaidAt)}</span>` : '<span class="pill warn">awaiting bank</span>'}</td></tr>`);
+    return `<div class="panel"><div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
+        <div><b class="mono">${esc(o.orderId)}</b> ${statusPill(o.status)} <span class="small muted">court order <span class="mono">${esc(o.orderRef)}</span> on ${esc(o.bankId)} account ${short(o.accountHash)}</span></div>
+        <div class="small">held ${rupees(o.totalHeld)} · recovered <b>${rupees(o.recovered)}</b> · released to holder ${rupees(o.releasedToAccount)}</div></div>
+      ${table(["Complaint", "Victim bank", "#Lost", "#Held here", "#Share", "Repayment"], shares, "")}</div>`;
+  }).join("");
+
+  const privacy = org.name === "investigator"
+    ? `${esc(org.label)} is in every case collection, so it sees all case details.`
+    : `${esc(org.label)} sees case details only for complaints its own customers filed; the rest exist here only as hashes.`;
+  return `<div class="note">${privacy}</div>
+    <h2>Complaints</h2>
+    <div class="panel">${table(["Complaint", "Victim bank", "Case", "#Lost", "#Held", "Recovered", "", "Case details"], cRows, "No complaints yet. Run demo-pillar4.sh.")}</div>
+    <h2>Where the money went ${complaints.length > 4 ? `<span class="small muted">(latest 4 complaints)</span>` : ""}</h2>
+    ${traces ? `<div class="hop head"><div>Transfer</div><div class="num">Victim money</div><div class="num">Moved on</div><div class="num">Held</div><div class="num">Holdable</div><div>Holds</div></div>${traces}` : '<div class="panel empty">Nothing traced yet.</div>'}
+    <h2>Holds</h2>
+    <div class="panel">${table(["Hold", "Complaint", "Account", "#Amount", "Provision", "Case", "Status", "Placed"], hRows, "No holds yet.")}</div>
+    <h2>Recovery orders</h2>
+    ${oHtml || '<div class="panel empty">No court orders yet.</div>'}`;
+}
+
+// ---------- shell ----------
+async function refresh() {
+  if (busy) return;
+  busy = true;
+  try {
+    const [st, sw] = await Promise.all([
+      getJSON("/api/state?org=" + encodeURIComponent(current.org)),
+      current.tab === "health" ? getJSON("/api/switches") : Promise.resolve(null),
+    ]);
+    $("#src").textContent = `Reading ${st.org.label}'s own database (port ${st.org.dbPort}) · ${new Date().toLocaleTimeString()}`;
+    const html = current.tab === "health" ? viewHealth(st, sw) : current.tab === "supply" ? viewSupply(st) : viewFraud(st);
+    $("#view").innerHTML = html;
+  } catch (e) {
+    $("#view").innerHTML = `<div class="err">Could not read ${esc(current.org)}'s database: ${esc(e.message)}. Is the network up?</div>`;
+  } finally {
+    busy = false;
+  }
+}
+
+function select(tab) {
+  current.tab = tab; store.set("cc-tab", tab);
+  for (const b of document.querySelectorAll("#tabs button")) b.classList.toggle("on", b.dataset.tab === tab);
+  refresh();
+}
+
+(async function start() {
+  orgs = await getJSON("/api/orgs");
+  if (!orgs.some((o) => o.name === current.org)) current.org = "npci";
+  $("#org").innerHTML = orgs.map((o) => `<option value="${esc(o.name)}"${o.name === current.org ? " selected" : ""}>${esc(o.label)}</option>`).join("");
+  $("#org").addEventListener("change", (e) => { current.org = e.target.value; store.set("cc-org", current.org); refresh(); });
+  for (const b of document.querySelectorAll("#tabs button")) b.addEventListener("click", () => select(b.dataset.tab));
+  if (!["health", "supply", "fraud"].includes(current.tab)) current.tab = "health";
+  select(current.tab);
+  timer = setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>
